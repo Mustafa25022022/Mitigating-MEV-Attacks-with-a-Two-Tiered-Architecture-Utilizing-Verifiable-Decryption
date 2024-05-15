@@ -16,6 +16,7 @@ Please note that the code and experiments provided in this repository are intend
 - Case3_Multiple.py: Implementation for Case 3 with multiple scenarios.
 - Case3_Multiple_updates_1000.py: Implementation for Case 3 with multiple scenarios and 1000 updates.
 - Case4_Multiple.py: Implementation for Case 4 with multiple scenarios.
+- Statistics Matrix.py: Implementation for Statistics Matrix. 
 
 ## Description
 
