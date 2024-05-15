@@ -4,6 +4,9 @@ Mitigating MEV Attacks with a Two-Tiered Architecture  Utilizing Verifiable Decr
 
 This repository contains the Python implementation files used for the proposal model in the manuscript titled "Mitigating MEV Attacks with a Two-Tiered Architecture Utilizing Verifiable Decryption".
 
+## Research Use Notice
+Please note that the code and experiments provided in this repository are intended for research purposes only. They have not been fully validated and should be used with caution. Users are encouraged to review the code and test it further before applying it in production environments.
+
 ## Python Implementation Files
 
 - Algorithm Implementation.py: Contains the main algorithm implementation.
