@@ -58,7 +58,7 @@ def main():
             "Verification Passed": verification_passed
         })
 
-    # Convert results to DataFrame for easier analysis
+  
     df = pd.DataFrame(results)
     print(df.describe())  # Summarize the statistics of the data
     df.to_csv("encryption_decryption_stats.csv", index=False)  # Save to CSV for further analysis
