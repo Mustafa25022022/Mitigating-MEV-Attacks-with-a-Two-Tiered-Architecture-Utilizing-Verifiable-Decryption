@@ -59,7 +59,7 @@ def run_tests(num_tests=10):
             "Tamper Check Time (s)": tamper_check_time
         })
 
-    # Convert results to DataFrame for easier analysis
+
     df = pd.DataFrame(results)
     print(df.describe())  # Show summary statistics for collected data
     return df
