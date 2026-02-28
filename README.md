@@ -4,11 +4,52 @@ Mitigating MEV Attacks with a Two-Tiered Architecture  Utilizing Verifiable Decr
 
 This repository contains the Python implementation files used for the proposal model in the manuscript titled "Mitigating MEV Attacks with a Two-Tiered Architecture Utilizing Verifiable Decryption". This algorithm implements the paper published at: [Springer: Mitigating MEV attacks with a two-tiered architecture utilizing verifiable decryption](https://link.springer.com/article/10.1186/s13638-024-02390-4).
 
-## Abstract
+## Abstract & Protocol Formulation
 
-A distributed ledger is a shared and synchronized database across multiple designated nodes, often referred to as miners, validators, or peers. These nodes record, distribute, and access data to ensure security and transparency. However, these nodes can be compromised and manipulated by selectively choosing which user transactions to include, exclude, or reorder, thereby gaining an unfair advantage. This is known as a miner/maximal extractable value (MEV) attack.
+A distributed ledger is a shared and synchronized database across multiple nodes. However, these nodes (miners/validators) can be compromised to extract Maximal Extractable Value (MEV) by selectively including, excluding, or reordering user transactions.
 
-Existing solutions can be classified into various categories, such as MEV auction platforms and time-based ordering properties, which rely on private transaction Mempools. In this paper, we first identify some architectural weaknesses inherent in the latest proposals that divide the block creation and execution roles into separate functions: block builders and block executors. The existing schemes mainly suffer from the verifiability of the decryption process, where a corrupted builder or executor can simply deny the inclusion of specific targeted transactions by exploiting the fact that all transactions are in plain format. To address this, we propose an enhanced version that incorporates a verifiable decryption process. On a very high level, within our proposal, whenever an Executor or a Builder performs a decryption, the decrypted values must be broadcasted. This enables any entity in the network to publicly verify whether the decryption was executed correctly, thus preventing malicious behavior by either party from going undetected. We also define a new adversary model for MEV and conduct a comprehensive security analysis of our protocol against all kinds of potential adversaries related to MEV. Finally, we present the performance analysis of the proposed solution.
+To address this, the protocol implements a **Two-Tiered Architecture Utilizing Verifiable Decryption** separating block creation (Builders) from block execution (Executors). The protocol is formalized as follows:
+
+### 1. Setup Phase
+
+* **Key Generation:** The network establishes public/private key pairs for the Builder and Executor using RSA-2048.
+  * Builder: $(pk_B, sk_B) \leftarrow \text{KeyGen}(1^\lambda)$
+  * Executor: $(pk_E, sk_E) \leftarrow \text{KeyGen}(1^\lambda)$
+
+### 2. User Phase (Transaction Encryption)
+
+* A user wishes to submit a transaction $tx$.
+* **Symmetric Key Generation:** The user generates a random symmetric key $K \leftarrow \{0, 1\}^{256}$.
+* **Payload Encryption:** The user encrypts $tx$ using an authenticated encryption scheme (e.g., AES-EAX) to obtain the ciphertext, authentication tag, and nonce: $(C_{tx}, tag, nonce) \leftarrow \text{Enc}_K(tx)$.
+* **Key Encapsulation:** The user encrypts the symmetric key $K$ for both the Builder and the Executor using their respective public keys via PKCS#1 OAEP:
+  * $C_B \leftarrow \text{Enc}_{pk_B}(K)$
+  * $C_E \leftarrow \text{Enc}_{pk_E}(K)$
+* **Broadcast:** The user broadcasts the tuple $(C_{tx}, C_B, C_E)$ to the public Mempool.
+
+### 3. Builder Phase (Decryption & Ordering)
+
+* The Builder collects encrypted transactions from the Mempool.
+* **Decryption:** The Builder decrypts $C_B$ using their private key to recover the symmetric key: $K \leftarrow \text{Dec}_{sk_B}(C_B)$.
+* **Verification & Ordering:** The Builder computes hashes or zero-knowledge proofs demonstrating the integrity of the ciphertext without fully decrypting or executing the transaction payload. They construct a Candidate Block $Blk_B$ with a fixed transaction order.
+* **Proof Generation:** The Builder generates a verifiable decryption proof $\pi_B$.
+* **Broadcast:** The Builder broadcasts the Candidate Block and proofs $(Blk_B, \pi_B)$.
+
+### 4. Public Verification Phase
+
+* The community (nodes/validators) verifies the Builder's proof $\pi_B$. If $\text{Verify}(Blk_B, \pi_B) == \text{True}$, the block proceeds; otherwise, the Builder is penalized.
+
+### 5. Executor Phase (Decryption & Execution)
+
+* The Executor receives the verified Candidate Block $Blk_B$.
+* **Decryption:** The Executor decrypts $C_E$ using their private key to recover the symmetric key: $K \leftarrow \text{Dec}_{sk_E}(C_E)$.
+* **Transaction Recovery:** The Executor decrypts the payload to reveal the raw transaction: $tx \leftarrow \text{Dec}_K(C_{tx}, tag, nonce)$.
+* **Execution:** The Executor executes the transactions $tx_i$ in the *exact* sequence dictated by $Blk_B$.
+* **Proof Generation:** The Executor generates a state transition and verifiable decryption proof $\pi_E$.
+* **Broadcast:** The Executor broadcasts the Final Block and proofs $(Blk_E, \pi_E)$.
+
+### 6. Final Verification Phase
+
+* The network verifies the Executor's proofs $\pi_E$. If valid, $Blk_E$ is permanently committed to the ledger.
 
 ## Research Use Notice
 
@@ -16,14 +57,14 @@ Please note that the code and experiments provided in this repository are intend
 
 ## Python Implementation Files
 
-- `Algorithm Implementation.py`: Contains the main core algorithm implementation.
-- `benchmark_base_encryption.py`: Base encryption benchmarks for User, Builder, and Executor key exchanges. Evaluates encryption and decryption latencies.
-- `benchmark_builder_tampering.py`: Evaluates scenarios where the Builder acts maliciously and tempers with the transaction ciphertext.
-- `benchmark_executor_tampering.py`: Evaluates scenarios where the Executor tampers with the original transaction data.
-- `benchmark_community_verification.py`: Measures overhead on verifying builder/executor validity based on cryptographic hashes.
-- `local_eth_utils.py`: Contains standard EIP-1559 Raw Ethereum Transaction generation utilities used across all benchmarks.
-- `Statistics Matrix.py`: Implementation for statistical analysis and metrics.
-- `Probability Rate of MEV attacks.py`: Implementation focusing on the statistical probability of succeeding in an MEV attack scenario.
+* `Algorithm Implementation.py`: Contains the main core algorithm implementation.
+* `benchmark_base_encryption.py`: Base encryption benchmarks for User, Builder, and Executor key exchanges. Evaluates encryption and decryption latencies.
+* `benchmark_builder_tampering.py`: Evaluates scenarios where the Builder acts maliciously and tempers with the transaction ciphertext.
+* `benchmark_executor_tampering.py`: Evaluates scenarios where the Executor tampers with the original transaction data.
+* `benchmark_community_verification.py`: Measures overhead on verifying builder/executor validity based on cryptographic hashes.
+* `local_eth_utils.py`: Contains standard EIP-1559 Raw Ethereum Transaction generation utilities used across all benchmarks.
+* `Statistics Matrix.py`: Implementation for statistical analysis and metrics.
+* `Probability Rate of MEV attacks.py`: Implementation focusing on the statistical probability of succeeding in an MEV attack scenario.
 
 ## Description
 
