@@ -2,7 +2,13 @@
 
 Mitigating MEV Attacks with a Two-Tiered Architecture  Utilizing Verifiable Decryption
 
-This repository contains the Python implementation files used for the proposal model in the manuscript titled "Mitigating MEV Attacks with a Two-Tiered Architecture Utilizing Verifiable Decryption".
+This repository contains the Python implementation files used for the proposal model in the manuscript titled "Mitigating MEV Attacks with a Two-Tiered Architecture Utilizing Verifiable Decryption". This algorithm implements the paper published at: [Springer: Mitigating MEV attacks with a two-tiered architecture utilizing verifiable decryption](https://link.springer.com/article/10.1186/s13638-024-02390-4).
+
+## Abstract
+
+A distributed ledger is a shared and synchronized database across multiple designated nodes, often referred to as miners, validators, or peers. These nodes record, distribute, and access data to ensure security and transparency. However, these nodes can be compromised and manipulated by selectively choosing which user transactions to include, exclude, or reorder, thereby gaining an unfair advantage. This is known as a miner/maximal extractable value (MEV) attack.
+
+Existing solutions can be classified into various categories, such as MEV auction platforms and time-based ordering properties, which rely on private transaction Mempools. In this paper, we first identify some architectural weaknesses inherent in the latest proposals that divide the block creation and execution roles into separate functions: block builders and block executors. The existing schemes mainly suffer from the verifiability of the decryption process, where a corrupted builder or executor can simply deny the inclusion of specific targeted transactions by exploiting the fact that all transactions are in plain format. To address this, we propose an enhanced version that incorporates a verifiable decryption process. On a very high level, within our proposal, whenever an Executor or a Builder performs a decryption, the decrypted values must be broadcasted. This enables any entity in the network to publicly verify whether the decryption was executed correctly, thus preventing malicious behavior by either party from going undetected. We also define a new adversary model for MEV and conduct a comprehensive security analysis of our protocol against all kinds of potential adversaries related to MEV. Finally, we present the performance analysis of the proposed solution.
 
 ## Research Use Notice
 
