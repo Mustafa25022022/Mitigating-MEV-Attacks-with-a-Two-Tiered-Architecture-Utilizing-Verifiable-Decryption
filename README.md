@@ -10,15 +10,14 @@ Please note that the code and experiments provided in this repository are intend
 
 ## Python Implementation Files
 
-- Algorithm Implementation.py: Contains the main algorithm implementation.
-- Case1_multiple.py: Implementation for Case 1 with multiple scenarios.
-- Case1_multiple_updates_1000.py: Implementation for Case 1 with multiple scenarios and 1000 updates.
-- Case2_multiple.py: Implementation for Case 2 with multiple scenarios.
-- Case3_Multiple.py: Implementation for Case 3 with multiple scenarios.
-- Case3_Multiple_updates_1000.py: Implementation for Case 3 with multiple scenarios and 1000 updates.
-- Case4_Multiple.py: Implementation for Case 4 with multiple scenarios.
-- Statistics Matrix.py: Implementation for Statistics Matrix.
-- Probability Rate of MEV attacks.py Implementation for statistical analysis.
+- `Algorithm Implementation.py`: Contains the main core algorithm implementation.
+- `benchmark_base_encryption.py`: Base encryption benchmarks for User, Builder, and Executor key exchanges. Evaluates encryption and decryption latencies.
+- `benchmark_builder_tampering.py`: Evaluates scenarios where the Builder acts maliciously and tempers with the transaction ciphertext.
+- `benchmark_executor_tampering.py`: Evaluates scenarios where the Executor tampers with the original transaction data.
+- `benchmark_community_verification.py`: Measures overhead on verifying builder/executor validity based on cryptographic hashes.
+- `local_eth_utils.py`: Contains standard EIP-1559 Raw Ethereum Transaction generation utilities used across all benchmarks.
+- `Statistics Matrix.py`: Implementation for statistical analysis and metrics.
+- `Probability Rate of MEV attacks.py`: Implementation focusing on the statistical probability of succeeding in an MEV attack scenario.
 
 ## Description
 
@@ -58,19 +57,87 @@ sequenceDiagram
 
 ## Benchmark Results
 
-Below are the benchmark results of simulating the **Two-Tier MEV-Resistant Block Construction Protocol** with 1000 transactions.
+Below are the single-execution benchmark results of simulating the **Two-Tier MEV-Resistant Block Construction Protocol** with a randomly generated standard Raw Ethereum Transaction.
+
+In addition to timing, the protocols tracked the EVM `Ciphertext Payload` per transaction which evaluates to exactly **661-693 bytes** overhead given AES-EAX and RSA-2048 parameters. Storing this equivalent overhead as `Calldata` during transaction initiation on mainnet would cost theoretically ~`10492-11064 gas`.
 
 ```text
 ===================================================================
-   Benchmarking Protocol with 1000 Transactions               
+   Benchmarking Protocol with 1 RAW ETH Transaction       
 ===================================================================
 
-Benchmark Results (Average time per transaction over 1000 runs):
-  User Phase (Encryption)         : 2.095 ms
-  Builder Phase (Decryption/Proof): 46.521 ms
+[*] Generating 1 signed raw Ethereum transaction...
+Benchmark Results (Time for 1 transaction execution):
+  User Phase (Encryption)         : 3.026 ms
+  Builder Phase (Decryption/Proof): 40.618 ms
   Public Verification (Proof check): 0.000 ms
-  Executor Phase (Full Decryption): 46.671 ms
+  Executor Phase (Full Decryption): 41.565 ms
   Final Verification (Proof check) : 0.000 ms
   ------------------------------------------------
-  Total Protocol Overhead per Tx   : 95.287 ms
+  Total Protocol Latency           : 85.209 ms
+
+[*] Original Tx Size    : 117 bytes
+[*] Ciphertext Payload  : 661 bytes
+[*] Overall Calldata Gas: 10492 gas
+===================================================================
+
+===================================================================
+              Benchmark: Base Encryption Latency                   
+===================================================================
+
+[*] Transaction encryption and integrity check executed.
+[*] Original Tx Size  : 117 bytes
+[*] Ciphertext Size   : 693 bytes
+[*] Encryption Time   : 7.302 ms
+[*] Decryption Time   : 4.084 ms
+[*] Integrity Passed  : True
+
+[*] Theoretical Gas Cost Overhead (Calldata): 11064 gas
+===================================================================
+
+===================================================================
+              Benchmark: Builder Tampering Detection               
+===================================================================
+
+[*] Tampering detection checked.
+[*] Tampering Detected : True
+[*] Integrity Passed   : False
+[*] Overall Execution  : 844.421 ms
+[*] Tamper Check Time  : 844.421 ms
+[*] Original Tx Size   : 117 bytes
+[*] Ciphertext Size    : 693 bytes
+
+[*] Theoretical Gas Cost Overhead (Calldata): 11004 gas
+===================================================================
+
+===================================================================
+              Benchmark: Executor Tampering Detection              
+===================================================================
+
+[*] Tampering detection checked.
+[*] Result Message     : Tampering not detected
+[*] Integrity Passed   : False
+[*] Encryption Time    : 9.518 ms
+[*] Tamper Action Time : 0.000 ms
+[*] Integrity Time     : 0.000 ms
+[*] Original Tx Size   : 117 bytes
+[*] Ciphertext Size    : 693 bytes
+
+[*] Theoretical Gas Cost Overhead (Calldata): 11016 gas
+===================================================================
+
+===================================================================
+              Benchmark: Community Verification Latency            
+===================================================================
+
+[*] Community Verification finished.
+[*] Builder Verified   : True
+[*] Executor Verified  : False
+[*] Verification Time  : 0.000 ms
+[*] Key Gen Time       : 370.096 ms
+[*] Original Tx Size   : 117 bytes
+[*] Ciphertext Size    : 661 bytes
+
+[*] Theoretical Gas Cost Overhead (Calldata): 10540 gas
+===================================================================
 ```

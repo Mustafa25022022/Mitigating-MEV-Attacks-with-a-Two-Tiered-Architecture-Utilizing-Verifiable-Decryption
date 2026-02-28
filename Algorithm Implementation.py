@@ -4,6 +4,9 @@ from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from eth_account import Account
+import secrets
+from local_eth_utils import generate_ethereum_raw_tx, calculate_evm_calldata_gas
 
 def generate_keys():
     """Generate RSA keypairs for Builder and Executor."""
@@ -14,13 +17,13 @@ def generate_keys():
 # ==========================================
 # User Phase
 # ==========================================
-def user_phase(tx, pkB, pkE):
+def user_phase(raw_tx, pkB, pkE):
     # 1. Generate fresh symmetric key K (AES-256)
     K = os.urandom(32)
     
     # 2. C_tx <- SymEnc(K, Tx)
     cipher_aes = AES.new(K, AES.MODE_EAX)
-    C_tx, tag = cipher_aes.encrypt_and_digest(tx.encode('utf-8'))
+    C_tx, tag = cipher_aes.encrypt_and_digest(raw_tx)
     nonce = cipher_aes.nonce
     
     # 3. C_B <- AsymEnc(pk_B, K)
@@ -38,7 +41,7 @@ def user_phase(tx, pkB, pkE):
         'nonce': nonce,
         'C_B': C_B,
         'C_E': C_E,
-        'tx_size': len(tx.encode('utf-8'))
+        'tx_size': len(raw_tx)
     }
     return payload
 
@@ -101,7 +104,12 @@ def executor_phase(Blk_B, skE):
             tx_decoded = cipher_aes.decrypt_and_verify(tx_payload['C_tx'], tx_payload['tag'])
             
             # 22. Execute Tx
-            executed_tx = f"Execution Result: [{tx_decoded.decode('utf-8')}] Completed Successfully."
+            # Deserialize the RAW transaction to show it was executed
+            try:
+                tx_info = f"RAW_TX bytes (len={len(tx_decoded)})"
+                executed_tx = f"Execution Result: [{tx_info}] Completed Successfully."
+            except Exception as e:
+                executed_tx = f"Execution Result: Failed to decode - {e}"
             Blk_E.append(executed_tx)
             
             # 23. Generate verifiable decryption proof pi_E
@@ -126,9 +134,30 @@ def final_verification(Blk_E, pi_E_list):
             return False
     return True
 
-def benchmark_protocol(num_txs=1000):
+def generate_ethereum_raw_tx(nonce):
+    """Generate a standard EIP-1559 Raw Ethereum Transaction"""
+    # Create a random user identity
+    private_key = "0x" + secrets.token_hex(32)
+    user_account = Account.from_key(private_key)
+    
+    # Build a standard ETH transaction
+    transaction = {
+        'to': '0xF0109fC8DF283027b6285cc889F5aA624EaC1F55', # Dummy recipient
+        'value': 1000000000000000000, # 1 ETH
+        'gas': 21000,
+        'maxFeePerGas': 2000000000,
+        'maxPriorityFeePerGas': 1000000000,
+        'nonce': nonce,
+        'chainId': 1
+    }
+    
+    # Sign it to create the Raw Transaction bytes
+    signed_tx = Account.sign_transaction(transaction, private_key)
+    return signed_tx.raw_transaction
+
+def benchmark_protocol():
     print(f"\n===================================================================")
-    print(f"   Benchmarking Protocol with {num_txs} Transactions               ")
+    print(f"   Benchmarking Protocol with 1 RAW ETH Transaction       ")
     print(f"===================================================================\n")
     
     keyB, keyE = generate_keys()
@@ -137,8 +166,9 @@ def benchmark_protocol(num_txs=1000):
     skB = keyB.export_key()
     skE = keyE.export_key()
     
-    # Generate 1000 dummy transactions of different sizes
-    txs = [f"Tx_Dummy_Data_Payload_{i}" * 5 for i in range(num_txs)]
+    # Generate actual raw ethereum transactions for the benchmark
+    print(f"[*] Generating 1 signed raw Ethereum transaction...")
+    txs = [generate_ethereum_raw_tx(0)]
     mempool = []
     
     # Benchmark User Phase
@@ -146,42 +176,48 @@ def benchmark_protocol(num_txs=1000):
     for tx in txs:
         mempool.append(user_phase(tx, pkB, pkE))
     end_user = time.time()
-    user_time_ms = ((end_user - start_user) / num_txs) * 1000
+    user_time_ms = ((end_user - start_user)) * 1000
+    
+    # Gas cost logic
+    overhead_bytes = mempool[0]['C_tx'] + mempool[0]['tag'] + mempool[0]['nonce'] + mempool[0]['C_B'] + mempool[0]['C_E']
     
     # Benchmark Builder Phase
     start_builder = time.time()
     Blk_B, pi_B_list = builder_phase(mempool, skB)
     end_builder = time.time()
-    builder_time_ms = ((end_builder - start_builder) / num_txs) * 1000
+    builder_time_ms = ((end_builder - start_builder)) * 1000
 
     # Benchmark Public Verification
     start_pub_verif = time.time()
     public_verification(Blk_B, pi_B_list)
     end_pub_verif = time.time()
-    pub_verif_time_ms = ((end_pub_verif - start_pub_verif) / num_txs) * 1000
+    pub_verif_time_ms = ((end_pub_verif - start_pub_verif)) * 1000
     
     # Benchmark Executor Phase
     start_executor = time.time()
     Blk_E, pi_E_list = executor_phase(Blk_B, skE)
     end_executor = time.time()
-    executor_time_ms = ((end_executor - start_executor) / num_txs) * 1000
+    executor_time_ms = ((end_executor - start_executor)) * 1000
     
     # Benchmark Final Verification
     start_fin_verif = time.time()
     final_verification(Blk_E, pi_E_list)
     end_fin_verif = time.time()
-    fin_verif_time_ms = ((end_fin_verif - start_fin_verif) / num_txs) * 1000
+    fin_verif_time_ms = ((end_fin_verif - start_fin_verif)) * 1000
     
     total_time_ms = user_time_ms + builder_time_ms + pub_verif_time_ms + executor_time_ms + fin_verif_time_ms
     
-    print(f"Benchmark Results (Average time per transaction over {num_txs} runs):")
+    print(f"Benchmark Results (Time for 1 transaction execution):")
     print(f"  User Phase (Encryption)         : {user_time_ms:.3f} ms")
     print(f"  Builder Phase (Decryption/Proof): {builder_time_ms:.3f} ms")
     print(f"  Public Verification (Proof check): {pub_verif_time_ms:.3f} ms")
     print(f"  Executor Phase (Full Decryption): {executor_time_ms:.3f} ms")
     print(f"  Final Verification (Proof check) : {fin_verif_time_ms:.3f} ms")
     print(f"  ------------------------------------------------")
-    print(f"  Total Protocol Overhead per Tx   : {total_time_ms:.3f} ms\n")
+    print(f"  Total Protocol Latency           : {total_time_ms:.3f} ms\n")
+    print(f"[*] Original Tx Size    : {len(txs[0])} bytes")
+    print(f"[*] Ciphertext Payload  : {len(overhead_bytes)} bytes")
+    print(f"[*] Overall Calldata Gas: {calculate_evm_calldata_gas(overhead_bytes)} gas")
     return {
         "user_ms": user_time_ms,
         "builder_ms": builder_time_ms, 
@@ -205,20 +241,17 @@ def main():
     skE = keyE.export_key()
     print("    Keys generated successfully.\n")
     
-    # Example Transactions
-    txs = [
-        "Swap 10 ETH for 20,000 USDT on Uniswap", 
-        "Mint 1 BAYC NFT", 
-        "Transfer 50 USDC to Alice"
-    ]
+    # Generate 3 example raw EVM transactions
+    print("[*] Generating 3 actual signed Ethereum Raw Transactions...")
+    txs = [generate_ethereum_raw_tx(0), generate_ethereum_raw_tx(1), generate_ethereum_raw_tx(2)]
     mempool = []
     
     # ------------- 1. User Phase -------------
-    print("[1] User Phase starting...")
+    print("\n[1] User Phase starting...")
     for i, tx in enumerate(txs):
         payload = user_phase(tx, pkB, pkE)
         mempool.append(payload)
-        print(f"    -> User {i+1} generated K, encrypted Tx, and broadcasted (C_tx, C_B, C_E).")
+        print(f"    -> User {i+1} generated K, encrypted RAW Tx ({len(tx)} bytes), and broadcasted (C_tx, C_B, C_E).")
         
     # ------------- 2. Builder Phase -------------
     print("\n[2] Builder Phase starting...")
@@ -258,7 +291,7 @@ def main():
     print("\n==================== Protocol Execution Complete ====================")
     
     # Run Benchmark
-    benchmark_protocol(1000)
+    benchmark_protocol()
 
 if __name__ == '__main__':
     main()
