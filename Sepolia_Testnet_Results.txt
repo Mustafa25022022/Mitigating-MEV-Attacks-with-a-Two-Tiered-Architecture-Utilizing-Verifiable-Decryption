@@ -1,0 +1,36 @@
+===================================================================
+   Sepolia Testnet Context Simulation of Two-Tier MEV Protection   
+===================================================================
+
+[*] Connecting to Sepolia Testnet...
+    -> Connected! Latest Block: 10413308
+    -> Current Base Fee     : 0.0000 Gwei
+    -> Current Priority Fee : 0.0010 Gwei
+
+[*] Setting up Public/Private Keys...
+    Keys generated successfully.
+
+[*] Generating 1 Signed Sepolia Raw Transaction...
+
+[1] User Phase Simulated...
+[2] Builder Phase Simulated...
+[3] Public Verification: True
+[4] Executor Phase Simulated...
+[5] Final Verification: True
+
+===================================================================
+                Sepolia Benchmark Results:
+===================================================================
+  User Phase (Encryption)         : 82.518 ms
+  Builder Phase (Decryption/Proof): 32.476 ms
+  Public Verification (Proof check): 0.000 ms
+  Executor Phase (Full Decryption): 31.933 ms
+  Final Verification (Proof check) : 0.000 ms
+  ------------------------------------------------
+  Total Protocol Latency           : 146.927 ms
+
+[*] Original Sepolia Tx Size : 117 bytes
+[*] Ciphertext Payload       : 661 bytes
+[*] Protocol Calldata Gas    : 10576 gas
+[*] Abstract Overhead Cost   : 0.00000001 Sepolia ETH
+===================================================================
