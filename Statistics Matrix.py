@@ -11,7 +11,7 @@ def simulate_consecutive_nodes(n, trials):
 
 # Parameters
 nodes = [200, 300, 400, 500, 600,700,800,900,1000]  # Different node sizes
-trials = [200000, 300000, 400000, 500000, 60000,70000,80000,90000,100000]  # Corresponding trials
+trials = [20000, 30000, 40000, 50000, 60000, 7000, 8000, 9000, 10000]  # Corresponding trials
 
 results = []
 for n, t in zip(nodes, trials):
